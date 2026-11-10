@@ -12,7 +12,7 @@ trained on CIFAR-10. The whole project is one notebook:
   convolutions, dropout, and a 1x1 100-channel classifier head
 - about 2.26M parameters
 - negative transform-gate bias initialization, also from the paper
-- paper-inspired training: Nesterov SGD with momentum, He initialization, dropout 0.2,
+- paper-inspired training: Nesterov SGD, batch 100, weight decay 1e-3, dropout 0.2,
   exponential learning-rate decay, 100 epochs with decay 0.95
 - CIFAR-10 training and evaluation, loss/accuracy curves
 - gradient flow at initialization and after training
@@ -29,7 +29,7 @@ uv run jupyter lab       # open the notebook
 ```
 
 Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
-recommended but not required. The 19-layer convolutional run fits in 8 GB and takes roughly 45
+recommended but not required. The 19-layer convolutional run fits in 8 GB and takes roughly 55
 minutes for the highway model on an RTX 3060 Ti. CIFAR-10 is downloaded to `data/` on the first run
 (git-ignored).
 
