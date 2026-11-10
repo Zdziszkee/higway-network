@@ -1,7 +1,7 @@
 
 == Cell 20: Gate evolution heading
 
-*Role of this cell.* Explains the gate-evolution heatmap: rows are highway layers, columns are epochs. Bright cells mean the layer transforms its input, dark cells mean it mostly carries. Gates start near `sigmoid(-2) ≈ 0.12` and move during training.
+*Role of this cell.* Explains the gate-evolution heatmap: rows are highway layers, columns are epochs. Bright cells mean the layer transforms its input, dark cells mean it mostly carries. At initialization the gates are near `sigmoid(-2) ≈ 0.12`; the first recorded column is already after one epoch, and in this compact run the gates open on average.
 
 == Cell 21: Gate-evolution heatmap
 
@@ -85,7 +85,7 @@
 
 == Cell 24: Class-specific routing heading
 
-*Role of this cell.* Explains the paper's Figure 3 idea: compare each class's mean gate activity with the overall average. Red cells mean a class transforms more than usual in that layer; blue cells mean it carries more than usual.
+*Role of this cell.* Explains the paper's Figure 3 idea for its 50-layer networks: compare each class's mean gate activity with the overall average. Red cells mean a class transforms more than usual in that layer; blue cells mean it carries more than usual.
 *Why this matters.* It tests whether the gates are input-dependent or just a fixed layer-wise pattern.
 
 == Cell 25: Class-routing heatmap
@@ -181,7 +181,7 @@
 
 == Cell 28: Lesioning heading
 
-*Role of this cell.* Explains the paper's Figure 4 lesioning experiment. Close all transform gates of one layer at a time, forcing that layer to copy its input, and measure the test-accuracy drop. A drop near zero means the layer is barely used; a large drop means it is important.
+*Role of this cell.* Explains the paper's Figure 4 lesioning experiment for its 50-layer networks. Close all transform gates of one layer at a time, forcing that layer to copy its input, and measure the test-accuracy drop. A drop near zero means the layer is barely used; a large drop means it is important.
 *Caveat.* With 10,000 test images, differences below about 0.5 percentage points are close to noise, so small bars should not be over-interpreted.
 
 == Cell 29: Layer-lesion experiment
@@ -321,37 +321,39 @@
 *What this cell does.* Takes one test batch, keeps eight images, runs the highway model, and shows each image with its true label, predicted label, and confidence.
 
 ```
-  1 | images, labels = next(iter(test_loader))
-  2 | images, labels = images[:8], labels[:8]  # one batch holds 512, show 8
-  3 | with torch.no_grad():
-  4 |     probs = highway(images.to(device)).softmax(dim=1).cpu()
-  5 | labels = labels.tolist()
-  6 | preds = probs.argmax(dim=1).tolist()
-  7 | confs = probs.max(dim=1).values.tolist()
-  8 | 
-  9 | fig, axes = plt.subplots(2, 4, figsize=(10, 5.5))
- 10 | for ax, img, label, pred, conf in zip(axes.flat, images, labels, preds, confs, strict=True):
- 11 |     rgb = (img * torch.tensor(STD)[:, None, None] + torch.tensor(MEAN)[:, None, None]).clamp(0, 1)
- 12 |     ax.imshow(rgb.permute(1, 2, 0))
- 13 |     ax.set_title(f"true: {classes[label]}\npred: {classes[pred]} ({conf:.0%})", fontsize=9)
- 14 |     ax.axis("off")
- 15 | 
- 16 | plt.tight_layout()
- 17 | plt.show()
+  1 | sample_iter = iter(test_loader)  # keep the iterator alive for a clean worker shutdown
+  2 | images, labels = next(sample_iter)
+  3 | images, labels = images[:8], labels[:8]  # one batch holds 512, show 8
+  4 | with torch.no_grad():
+  5 |     probs = highway(images.to(device)).softmax(dim=1).cpu()
+  6 | labels = labels.tolist()
+  7 | preds = probs.argmax(dim=1).tolist()
+  8 | confs = probs.max(dim=1).values.tolist()
+  9 | 
+ 10 | fig, axes = plt.subplots(2, 4, figsize=(10, 5.5))
+ 11 | for ax, img, label, pred, conf in zip(axes.flat, images, labels, preds, confs, strict=True):
+ 12 |     rgb = (img * torch.tensor(STD)[:, None, None] + torch.tensor(MEAN)[:, None, None]).clamp(0, 1)
+ 13 |     ax.imshow(rgb.permute(1, 2, 0))
+ 14 |     ax.set_title(f"true: {classes[label]}\npred: {classes[pred]} ({conf:.0%})", fontsize=9)
+ 15 |     ax.axis("off")
+ 16 | 
+ 17 | plt.tight_layout()
+ 18 | plt.show()
 ```
 
 *Line by line:*
 
-- *Line 1:* Gets the first test batch. The test loader does not shuffle, so this is always the same batch.
-- *Line 2:* Keeps only the first eight images and labels.
-- *Lines 3-4:* Runs the model without gradients, applies softmax to turn logits into probabilities, and moves the result to CPU.
-- *Line 5:* Converts labels to Python integers.
-- *Line 6:* `probs.argmax(dim=1).tolist()` gives the predicted class indices.
-- *Line 7:* `probs.max(dim=1).values.tolist()` gives the confidence of each prediction.
-- *Line 9:* Creates a 2×4 grid of axes.
-- *Line 10:* Iterates over images, labels, predictions, and confidences. `strict=True` checks that all sequences have the same length.
-- *Line 11:* Reverses normalization with `img * STD + MEAN`, broadcasting per channel, and clamps to 0 to 1 for display.
-- *Line 12:* Converts from channels-first to channels-last for matplotlib and displays the image.
-- *Line 13:* Adds a title with the true class, predicted class, and confidence as a percentage.
-- *Line 14:* Hides the axes.
-- *Lines 16-17:* Lays out and displays the grid.
+- *Line 1:* Creates a test iterator and keeps it in `sample_iter` so its workers shut down cleanly.
+- *Line 2:* Gets the first test batch. The test loader does not shuffle, so this is always the same batch.
+- *Line 3:* Keeps only the first eight images and labels.
+- *Lines 4-5:* Runs the model without gradients, applies softmax to turn logits into probabilities, and moves the result to CPU.
+- *Line 6:* Converts labels to Python integers.
+- *Line 7:* `probs.argmax(dim=1).tolist()` gives the predicted class indices.
+- *Line 8:* `probs.max(dim=1).values.tolist()` gives the confidence of each prediction.
+- *Line 10:* Creates a 2×4 grid of axes.
+- *Line 11:* Iterates over images, labels, predictions, and confidences. `strict=True` checks that all sequences have the same length.
+- *Line 12:* Reverses normalization with `img * STD + MEAN`, broadcasting per channel, and clamps to 0 to 1 for display.
+- *Line 13:* Converts from channels-first to channels-last for matplotlib and displays the image.
+- *Line 14:* Adds a title with the true class, predicted class, and confidence as a percentage.
+- *Line 15:* Hides the axes.
+- *Lines 17-18:* Lays out and displays the grid.

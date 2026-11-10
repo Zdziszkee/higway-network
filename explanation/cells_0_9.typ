@@ -65,7 +65,7 @@
   2 | DATA_ROOT = Path("data")
   3 | BATCH_SIZE = 128
   4 | EPOCHS = 25
-  5 | LR = 0.1  # paper CIFAR rate; exposes the depth-20 optimization gap
+  5 | LR = 0.1  # high CIFAR-10 rate; the highway shortcuts keep SGD stable
   6 | GATE_BIAS = -2.0
   7 | NUM_WORKERS = 2  # set to 0 on Windows if the data loader hangs
   8 | 
@@ -81,8 +81,8 @@
 - *Line 1:* `SEED = 0` fixes the random seed so initialization and data order are repeatable. Zero is a conventional, easy-to-quote choice.
 - *Line 2:* `DATA_ROOT = Path("data")` puts the CIFAR-10 download in `./data`, which is git-ignored.
 - *Line 3:* `BATCH_SIZE = 128` is the number of images per training step. The paper does not report a batch size; 128 is the value used by the public reproduction and is standard for SGD.
-- *Line 4:* `EPOCHS = 25` means 25 full passes over the 50,000 training images. This was reduced from 150 to keep the run near 20 to 30 minutes.
-- *Line 5:* `LR = 0.1` is the initial SGD learning rate. It is the rate used in the paper's CIFAR-10 convolutional runs and is high enough to expose optimization differences at depth. The comment mentions the depth-20 gap, but the notebook now trains only the highway model.
+- *Line 4:* `EPOCHS = 25` means 25 full passes over the 50,000 training images. This is a short pedagogical run; the authors' released Caffe config uses about 400 epochs.
+- *Line 5:* `LR = 0.1` is a high CIFAR-10 learning rate that stays stable here because the highway shortcuts preserve gradient flow. The authors' released config uses base LR 0.025 with Nesterov momentum and step decay.
 - *Line 6:* `GATE_BIAS = -2.0` is the initial transform-gate bias. `sigmoid(-2) ≈ 0.12`, so gates start mostly closed, as recommended in Section 2.2 of the paper.
 - *Line 7:* `NUM_WORKERS = 2` uses two background processes for data loading. Set it to 0 on Windows if the loader hangs.
 - *Lines 10-13:* `set_seed` seeds Python, PyTorch's CPU generator, and every CUDA generator. Calling it before model creation makes runs comparable.
@@ -129,10 +129,11 @@
  31 | )
  32 | 
  33 | # A fixed batch used later to inspect the gates.
- 34 | probe_x, _ = next(iter(test_loader))
- 35 | probe_x = probe_x[:256].to(device)
- 36 | 
- 37 | print(f"{len(train_set):,} train / {len(test_set):,} test images")
+ 34 | probe_iter = iter(test_loader)  # keep the iterator alive for a clean worker shutdown
+ 35 | probe_x, _ = next(probe_iter)
+ 36 | probe_x = probe_x[:256].to(device)
+ 37 | 
+ 38 | print(f"{len(train_set):,} train / {len(test_set):,} test images")
 ```
 
 *Line by line:*
@@ -154,8 +155,8 @@
 - *Line 22:* `num_workers=NUM_WORKERS` loads batches in parallel.
 - *Line 23:* `pin_memory=True` only on CUDA can speed up host-to-GPU copies.
 - *Lines 25-31:* The test `DataLoader` uses batch size 512 because evaluation has no gradients and can use larger batches. `shuffle=False` keeps the order stable.
-- *Lines 33-35:* `probe_x` is a fixed batch of 256 test images moved to the device. It is reused for gate statistics, gradient measurements, and layer-similarity plots so those analyses are comparable across calls.
-- *Line 37:* Prints the dataset sizes with thousands separators.
+- *Lines 33-36:* `probe_x` is a fixed batch of 256 test images moved to the device. The iterator is kept in `probe_iter` so its worker processes shut down cleanly instead of racing with Python's deallocator. The batch is reused for gate statistics, gradient measurements, and layer-similarity plots so those analyses are comparable across calls.
+- *Line 38:* Prints the dataset sizes with thousands separators.
 
 == Cell 6: The highway layer in code heading
 
@@ -206,9 +207,9 @@
 == Cell 8: The convolutional highway network heading
 
 *Role of this cell.* Describes the full model: a plain 3×3 stem, two plain strided convolutions that halve the spatial size and change channels, nineteen highway blocks split 6/6/7, global average pooling, and a linear classifier.
-*Depth convention.* With the stem, this is the paper's depth-20 convention: one plain layer followed by 19 hidden layers. The stage widths are 32, 64, and 128.
+*Depth convention.* Counting the stem, this is a depth-20 hidden stack: one plain layer followed by 19 highway layers. The paper's released 19-layer CIFAR-10 network is different: it interleaves 14 highway layers with plain convolutions. The stage widths are 32, 64, and 128.
 *Why the transitions are plain.* `H` and `T` both preserve channels and spatial size. Layers that change channels or resolution cannot be highway blocks because the carry addition would have mismatched shapes. Section 2.1 of the paper uses plain layers for this.
-*Honesty note.* This is a compact version of the paper's convolutional setup, not an exact FitNet reproduction.
+*Honesty note.* This is a compact variant of the paper's convolutional setup, not an exact FitNet reproduction.
 *Initialization.* All weights use He initialization. Gate biases are reset to -2 after initialization so the gates start mostly closed.
 
 == Cell 9: The full convolutional network
@@ -275,7 +276,7 @@
 *Line by line:*
 
 - *Line 1:* `class Net(nn.Module)` defines the full model.
-- *Lines 2-6:* The constructor takes `channels=(32, 64, 128)` and `blocks_per_stage=(6, 6, 7)`. The block counts sum to 19, matching the paper's depth-20 convention when the stem is included.
+- *Lines 2-6:* The constructor takes `channels=(32, 64, 128)` and `blocks_per_stage=(6, 6, 7)`. The block counts sum to 19, forming a depth-20 hidden stack when the stem is included. The paper's 19-layer CIFAR-10 net instead has 14 highway layers plus plain convolutions.
 - *Line 7:* `super().__init__()` initializes the base module.
 - *Line 8:* `c1, c2, c3 = channels` unpacks the three stage widths.
 - *Lines 9-12:* `self.stem` is a plain 3×3 convolution from 3 RGB channels to 32 channels, followed by ReLU. It changes the input dimensionality before any highway block.

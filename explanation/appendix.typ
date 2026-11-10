@@ -40,9 +40,9 @@ Inside a highway block, `T` has shape `(B, C, H, W)`. There is one gate value fo
   table.header([*Setting*], [*Value*], [*Why this value*]),
   [Seed], [`0`], [Reproducible initialization and data order.],
   [Batch size], [`128`], [Paper reproduction and standard SGD batch size.],
-  [Epochs], [`25`], [Reduced from 150 to keep the run near 20 to 30 minutes.],
-  [Initial LR], [`0.1`], [Paper CIFAR-10 convolutional rate.],
-  [LR decay], [`0.89` per epoch], [Chosen so 25 epochs end near the same LR as 150 epochs with 0.98.],
+  [Epochs], [`25`], [A short pedagogical run. The authors' released Caffe config uses 200k iterations, about 400 epochs at batch 100.],
+  [Initial LR], [`0.1`], [High CIFAR-10 rate; the authors' released config uses 0.025 with Nesterov momentum.],
+  [LR decay], [`0.89` per epoch], [Short-run exponential schedule; the paper's config uses step decay at 100k/150k/175k iterations.],
   [Momentum], [`0.9`], [Standard SGD momentum; the paper uses SGD with momentum.],
   [Weight decay], [`5e-4`], [Practical CIFAR-10 regularization; not stated explicitly in the paper.],
   [Gradient clipping], [`10`], [Stability addition; not in the paper.],
@@ -56,7 +56,7 @@ Inside a highway block, `T` has shape `(B, C, H, W)`. There is one gate value fo
 
 There are three different counts, and they are all correct in different contexts:
 
-- *Paper-style depth:* 20. One plain stem plus 19 hidden highway blocks. This matches the paper's depth-20 convention.
+- *Notebook depth:* 20 hidden layers. One plain stem plus 19 highway blocks. This is the depth-20 hidden-stack convention, not the paper's 19-layer CIFAR-10 architecture (14 highway layers plus plain convolutions).
 - *Highway blocks:* 19. Each block contains a transform convolution `H` and a gate convolution `T`.
 - *Physical convolution layers:* 41. One stem convolution, 38 block convolutions, and two downsampling convolutions. The classifier is a linear layer, not a convolution.
 
@@ -72,7 +72,7 @@ A 3×3 convolution with padding 1 preserves the height and width. The highway eq
 The carry term is `x * (1 - T)`. If `H(x)` had a different number of channels from `x`, the addition would be invalid. Channel-changing layers are therefore plain convolutions, as in Section 2.1 of the paper.
 
 === Why 19 blocks?
-The paper's depth-20 network is one plain layer followed by 19 highway layers. Nineteen blocks give that depth while keeping the run around 20 to 30 minutes.
+The notebook's depth-20 hidden stack is one plain layer followed by 19 highway layers. The paper's released 19-layer CIFAR-10 network is different: it has 14 highway layers interleaved with plain convolutions. Nineteen blocks give a deeper gated stack; the run takes about 13 to 15 minutes.
 
 === Why are there 41 convolutions if the depth is 20?
 Each highway block has two convolutions, `H` and `T`. The paper counts a highway block as one layer. Nineteen blocks therefore give 38 convolutions, plus one stem and two downsampling convolutions, for 41 physical convolutions.
@@ -81,7 +81,7 @@ Each highway block has two convolutions, `H` and `T`. The paper counts a highway
 The gate must be between 0 and 1 so the layer is a convex combination of the transformed input and the original input. A sigmoid guarantees that range and is smooth and differentiable.
 
 === Why start the gate bias at -2?
-`sigmoid(-2) ≈ 0.12`, so gates start mostly closed. The deep network initially behaves like a shallower, carry-heavy network and opens gates during training. This is the paper's Section 2.2 recommendation.
+`sigmoid(-2) ≈ 0.12`, so gates start mostly closed. The deep network initially behaves like a shallower, carry-heavy network and adapts the gates during training. This follows the paper's Section 2.2 recommendation of a negative initial bias.
 
 === Why He initialization?
 The transform branch uses ReLU. He normal initialization is designed to preserve signal variance in ReLU networks. The paper initializes the non-gate weights with the He et al. scheme.
@@ -93,13 +93,13 @@ The transform branch uses ReLU. He normal initialization is designed to preserve
 The paper trains with SGD and momentum. Adam would be a different optimizer and would make the comparison to the paper less direct.
 
 === Why learning rate 0.1?
-It is the paper's CIFAR-10 convolutional rate. The paper random-searched per-network rates, so 0.1 is a representative shared value rather than a universal optimum.
+It is a high CIFAR-10 rate that stays stable here because the highway shortcuts preserve gradient flow. The authors' released config uses base LR 0.025 with Nesterov momentum and step decay.
 
 === Why decay 0.89 instead of 0.98?
-The schedule must fit 25 epochs, not 150. `0.1 * 0.89^25 ≈ 0.005`, which is close to `0.1 * 0.98^150 ≈ 0.005`. This keeps the final learning rate similar.
+The paper's released config uses step decay, not a per-epoch exponential. For this 25-epoch run, 0.89 is a short-run choice that brings the learning rate down to about 0.005.
 
 === Why 25 epochs?
-It keeps the run near 20 to 30 minutes on the RTX 3060 Ti. The tradeoff is lower accuracy and less gate convergence than a 150-epoch run.
+It keeps the run near 13 to 15 minutes on the RTX 3060 Ti. The tradeoff is lower accuracy and less gate convergence than the paper's ~400-epoch run.
 
 === Why weight decay 5e-4?
 It is a practical CIFAR-10 regularization value that helps convolutional models generalize. The paper does not state it explicitly, so it is a documented addition.
@@ -145,11 +145,10 @@ The plain baseline was removed by request. The notebook now studies the highway 
 
 == Known inconsistencies and caveats
 
-- *Stale Results sentence.* Cell 14 still says "Two identical training setups, with and without the gates." The plain baseline has been removed, so this sentence is outdated.
-- *Stale LR comment.* Cell 3 says the learning rate "exposes the depth-20 optimization gap", but there is no plain model in the notebook now.
 - *No direct depth comparison.* Without a plain baseline, the notebook cannot prove the paper's depth claim. It can only show that the highway model trains and how its gates behave.
-- *Short training.* Twenty-five epochs is much shorter than the paper's setup. Gates may not fully converge, and gate/lesioning plots may be noisy.
-- *Compact architecture.* The model is not an exact FitNet reproduction. It uses a depth-20 convention and compact widths.
+- *Short training.* Twenty-five epochs is much shorter than the paper's released config, which uses about 400 epochs. Gates may not fully converge, and gate/lesioning plots may be noisy.
+- *Compact architecture.* The model is not an exact FitNet reproduction. It uses 19 highway blocks in a depth-20 hidden stack, while the paper's 19-layer CIFAR-10 net has 14 highway layers plus plain convolutions.
+- *Gate-bias direction.* In this run the learned biases move toward zero, so the gates open on average. The paper's much deeper networks often became more negative and selective. The difference is expected given the architecture and the short run, but it means the gate plots are not a direct reproduction of Figure 2.
 - *Lesioning noise.* Small accuracy drops should not be over-interpreted.
 - *Single-image gate map.* Averaging over channels can hide per-channel selectivity. The histogram is the more reliable part.
 
@@ -165,7 +164,7 @@ The plain baseline was removed by request. The notebook now studies the highway 
   [Section 2.1, convolutional highways and plain dimensionality changes], [Cell 8 description and cell 9 plain stem and downsampling convolutions.],
   [Section 2.2, negative gate bias], [Cell 3 `GATE_BIAS = -2` and cell 7 line 7.],
   [Section 3.1, MLP depth study], [Not reproduced. The notebook uses a CIFAR-10 convolutional model.],
-  [Table 1, CIFAR-10 convolutional highways], [Depth-20 convolutional model with 2.71M parameters. This is a compact version, not an exact FitNet layout.],
+  [Table 2, CIFAR-10 convolutional highways], [19 highway blocks plus a plain stem, 2.71M parameters. This is a compact variant, not an exact FitNet layout.],
   [Figure 2, gate biases and activity], [Cells 18-23.],
   [Figure 3, class-specific routing], [Cells 24-25.],
   [Figure 4, layer lesioning], [Cells 28-29.],

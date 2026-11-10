@@ -55,12 +55,12 @@
     inset: 5pt,
     align: (left, left),
     [*Notebook*], [`highway_cifar10.ipynb`],
-    [*Model*], [Convolutional highway network, depth-20 convention],
+    [*Model*], [Convolutional highway network, 19 highway blocks (depth-20 hidden stack)],
     [*Hidden blocks*], [19, split `6/6/7` over three stages],
     [*Physical convolutions*], [41, including stem and downsampling],
     [*Parameters*], [2,714,826],
     [*Training*], [SGD, 25 epochs, batch 128, LR 0.1, decay 0.89],
-    [*Runtime*], [About 20 to 30 minutes on an RTX 3060 Ti],
+    [*Runtime*], [About 13 to 15 minutes on an RTX 3060 Ti],
   )
 ]
 
@@ -81,7 +81,7 @@
 
 == What the notebook does
 
-The notebook implements a convolutional highway network for CIFAR-10 and studies its internal gates. It trains one model, not a plain baseline. The model follows the paper's depth-20 convention: one plain convolutional stem followed by 19 highway blocks. Each block computes
+The notebook implements a convolutional highway network for CIFAR-10 and studies its internal gates. It trains one model, not a plain baseline. The model uses a depth-20 hidden stack: one plain convolutional stem followed by 19 highway blocks. The paper's released 19-layer CIFAR-10 network instead has 14 highway layers plus plain convolutions. Each block computes
 
 ```
 y = H(x) * T(x) + x * (1 - T(x))
@@ -93,7 +93,7 @@ where `H` and `T` are 3×3 convolutions with padding 1. The gate `T` is a sigmoi
 
 - It is not the paper's exact FitNet reproduction. The widths, block counts, and training length are compact choices for an 8 GB GPU.
 - It does not include a plain baseline. The notebook can show that the highway model trains and how its gates behave, but it cannot by itself prove that highway networks beat plain networks at depth.
-- It is not a 150-epoch paper-scale run. It uses 25 epochs, so accuracy and gate convergence are lower.
+- It is not a paper-scale run. The authors' released config uses about 400 epochs; this uses 25, so accuracy and gate convergence are lower.
 
 == Architecture at a glance
 
@@ -120,7 +120,7 @@ where `H` and `T` are 3×3 convolutions with padding 1. The gate `T` is a sigmoi
 
 #callout[
   *The single most important caveat.* Twenty-five epochs is a short run. Gate plots may be noisier
-  and less converged than in the paper's long experiments.
+  and less converged than in the paper's ~400-epoch experiments.
 ]
 
 #include "cells_0_9.typ"
