@@ -19,7 +19,7 @@ trained on CIFAR-10. The whole project is one notebook:
 - gate analysis: bias and activity per layer, evolution during training, selectivity for one image
 - class-specific routing and layer-lesioning plots from the paper's analysis
 - an information-flow plot and a t-SNE view of the learned features
-- paper Figure 2-style per-channel gate maps and block-output heatmaps
+- paper Figure 2-style per-channel gate maps, block-output heatmaps, and gate-selectivity summaries
 
 ## Run locally
 
