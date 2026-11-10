@@ -1,51 +1,44 @@
-# highway
+# Highway Networks on CIFAR-10
 
-DeepL course project. Python 3.15 managed with [uv](https://docs.astral.sh/uv/).
+DeepL course project: a minimal, pedagogical PyTorch implementation of
+[Highway Networks](https://arxiv.org/abs/1505.00387) (Srivastava, Greff, Schmidhuber, 2015),
+trained on CIFAR-10. The whole project is one notebook:
+[`highway_cifar10.ipynb`](highway_cifar10.ipynb).
 
-## Layout
+## What's inside
 
-```
-src/highway/      package code
-notebooks/        Jupyter notebooks
-tests/            pytest tests
-```
+- a from-scratch `Highway` layer: `y = H(x) * T(x) + x * (1 - T(x))`
+- a plain `Linear -> ReLU` network as the baseline, identical except for the blocks
+- CIFAR-10 training and evaluation, loss/accuracy curves
+- an inspection of the learned transform gates (how much each layer transforms vs. carries)
+- notes on negative gate-bias initialization and suggestions for further experiments
 
-## Setup
+## Run locally
 
 ```bash
-uv sync                      # create .venv and install everything (incl. dev tools)
-make kernel                  # register the Jupyter kernel (already done in this checkout)
+uv sync                  # create .venv and install everything
+uv run jupyter lab       # open the notebook
 ```
 
-The venv is registered as the **Python 3.15 (highway)** kernel, project-locally inside
-`.venv/share/jupyter/kernels/highway` (no global Jupyter state). Re-register it if you
-recreate the venv:
+Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
+recommended but not required; training takes about a minute on a modern GPU. CIFAR-10 is
+downloaded to `data/` on the first run (git-ignored).
+
+If you recreate the virtual environment, re-register the project-local kernel:
 
 ```bash
 uv run python -m ipykernel install --sys-prefix --name highway --display-name "Python 3.15 (highway)"
 ```
 
-## Commands
+## Run on Google Colab
 
-Run `make` to list targets.
+Upload `highway_cifar10.ipynb`, then choose *Runtime > Change runtime type > GPU*. Colab has
+`torch`, `torchvision`, and `matplotlib` preinstalled, so there is no setup cell to run.
 
-| Task               | make      | raw command                            |
-| ------------------ | --------- | -------------------------------------- |
-| Notebook UI        | `make notebook` | `uv run jupyter notebook notebooks` |
-| JupyterLab UI      | `make lab`      | `uv run jupyter lab notebooks`      |
-| Lint (incl. ipynb) | `make lint`     | `uv run ruff check .`               |
-| Fix + format       | `make fmt`      | `uv run ruff check --fix . && uv run ruff format .` |
-| Type check         | `make typecheck`| `uv run ty check`                   |
-| Tests              | `make test`     | `uv run pytest`                     |
-| Everything         | `make check`    | lint + typecheck + tests            |
-| Run the script     | -               | `uv run highway`                    |
-| Add a dependency   | -               | `uv add <pkg>` / `uv add --dev <pkg>` |
+## Tooling
 
-## Config
-
-Tool settings live in `pyproject.toml`:
-
-- `[tool.ruff]` - line length 100, rules `E,W,F,I,B,C4,SIM,PTH,RET,UP,RUF`; both lint and
-  format apply to `.ipynb` cells as well as `.py` files
-- `[tool.ty]` - checks `src/` and `tests/`, ignores notebooks
-- `[tool.pytest.ini_options]` - tests live in `tests/`
+| Task               | Command                |
+| ------------------ | ---------------------- |
+| Lint (incl. ipynb) | `uv run ruff check .`  |
+| Fix + format       | `uv run ruff check --fix . && uv run ruff format .` |
+| Type check         | `uv run ty check`      |
