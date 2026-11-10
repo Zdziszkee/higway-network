@@ -9,16 +9,18 @@ trained on CIFAR-10. The whole project is one notebook:
 
 - the paper's highway layer: `y = H(x) * T(x) + x * (1 - T(x))`
 - the paper's 19-layer convolutional CIFAR-10 architecture: 14 highway layers, 4 plain
-  convolutions, dropout 0.2, and a 1x1 100-channel classifier head
+  convolutions, dropout, and a 1x1 100-channel classifier head
 - about 2.26M parameters
 - negative transform-gate bias initialization, also from the paper
-- paper-inspired training: SGD with momentum, He initialization, exponential learning-rate decay,
-  30 epochs with decay 0.86
+- paper-inspired training: Nesterov SGD with momentum, He initialization, dropout 0.2,
+  exponential learning-rate decay, 100 epochs with decay 0.95
 - CIFAR-10 training and evaluation, loss/accuracy curves
 - gradient flow at initialization and after training
 - gate analysis: bias and activity per layer, evolution during training, selectivity for one image
 - class-specific routing and layer-lesioning plots from the paper's analysis
 - an information-flow plot and a t-SNE view of the learned features
+- paper Figure 1-style plain-vs-highway depth comparison on MNIST
+- paper Figure 2-style per-channel gate maps and block-output heatmaps
 
 ## Run locally
 
@@ -28,9 +30,9 @@ uv run jupyter lab       # open the notebook
 ```
 
 Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
-recommended but not required. The 19-layer convolutional run fits in 8 GB and takes roughly 10 to
-15 minutes for the highway model on an RTX 3060 Ti. CIFAR-10 is downloaded to `data/` on the first
-run (git-ignored).
+recommended but not required. The 19-layer convolutional run fits in 8 GB and takes roughly 45
+minutes for the highway model on an RTX 3060 Ti. The MNIST depth comparison adds about 10 minutes.
+CIFAR-10 and MNIST are downloaded to `data/` on the first run (git-ignored).
 
 If you recreate the virtual environment, re-register the project-local kernel:
 
