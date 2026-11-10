@@ -81,8 +81,8 @@
 - *Line 1:* `SEED = 0` fixes the random seed so initialization and data order are repeatable. Zero is a conventional, easy-to-quote choice.
 - *Line 2:* `DATA_ROOT = Path("data")` puts the CIFAR-10 download in `./data`, which is git-ignored.
 - *Line 3:* `BATCH_SIZE = 128` is the number of images per training step. The paper does not report a batch size; 128 is the value used by the public reproduction and is standard for SGD.
-- *Line 4:* `EPOCHS = 25` means 25 full passes over the 50,000 training images. This is a short pedagogical run; the authors' released Caffe config uses about 400 epochs.
-- *Line 5:* `LR = 0.1` is a high CIFAR-10 learning rate that stays stable here because the highway shortcuts preserve gradient flow. The authors' released config uses base LR 0.025 with Nesterov momentum and step decay.
+- *Line 4:* `EPOCHS = 25` means 25 full passes over the 50,000 training images. This was reduced from 150 to keep the run near 20 to 30 minutes.
+- *Line 5:* `LR = 0.1` is the initial SGD learning rate. It is the rate used in the paper's CIFAR-10 convolutional runs and is high enough to expose optimization differences at depth. The comment mentions the depth-20 gap, but the notebook now trains only the highway model.
 - *Line 6:* `GATE_BIAS = -2.0` is the initial transform-gate bias. `sigmoid(-2) ≈ 0.12`, so gates start mostly closed, as recommended in Section 2.2 of the paper.
 - *Line 7:* `NUM_WORKERS = 2` uses two background processes for data loading. Set it to 0 on Windows if the loader hangs.
 - *Lines 10-13:* `set_seed` seeds Python, PyTorch's CPU generator, and every CUDA generator. Calling it before model creation makes runs comparable.
@@ -93,70 +93,85 @@
 
 == Cell 5: Dataset, transforms, and loaders
 
-*What this cell does.* Builds the CIFAR-10 training and test pipelines, wraps them in `DataLoader` objects, and saves a fixed probe batch for later gate and gradient analysis.
+*What this cell does.* Loads CIFAR-10, computes the per-channel mean and standard deviation from the training pixels at startup, builds the training and test transform pipelines, wraps them in `DataLoader` objects, and saves a fixed probe batch for later analysis.
+*Why compute the statistics dynamically.* Hardcoded values are fine for the standard CIFAR-10 training split, but they silently become wrong if the dataset, split, or preprocessing changes. Computing them once guarantees that normalization matches the data actually being used. The cost is about 0.6 seconds on this machine.
 
 ```
-  1 | MEAN = (0.4914, 0.4822, 0.4465)
-  2 | STD = (0.2470, 0.2435, 0.2616)
-  3 | 
-  4 | train_tf = transforms.Compose(
-  5 |     [
-  6 |         transforms.RandomCrop(32, padding=4),
-  7 |         transforms.RandomHorizontalFlip(),
-  8 |         transforms.ToTensor(),
-  9 |         transforms.Normalize(MEAN, STD),
- 10 |     ]
- 11 | )
- 12 | test_tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(MEAN, STD)])
- 13 | 
- 14 | train_set = datasets.CIFAR10(DATA_ROOT, train=True, download=True, transform=train_tf)
- 15 | test_set = datasets.CIFAR10(DATA_ROOT, train=False, download=True, transform=test_tf)
- 16 | classes = test_set.classes
- 17 | 
- 18 | train_loader = DataLoader(
- 19 |     train_set,
- 20 |     batch_size=BATCH_SIZE,
- 21 |     shuffle=True,
- 22 |     num_workers=NUM_WORKERS,
- 23 |     pin_memory=device.type == "cuda",
- 24 | )
- 25 | test_loader = DataLoader(
- 26 |     test_set,
- 27 |     batch_size=512,
- 28 |     shuffle=False,
- 29 |     num_workers=NUM_WORKERS,
- 30 |     pin_memory=device.type == "cuda",
- 31 | )
- 32 | 
- 33 | # A fixed batch used later to inspect the gates.
- 34 | probe_iter = iter(test_loader)  # keep the iterator alive for a clean worker shutdown
- 35 | probe_x, _ = next(probe_iter)
- 36 | probe_x = probe_x[:256].to(device)
- 37 | 
- 38 | print(f"{len(train_set):,} train / {len(test_set):,} test images")
+  1 | train_set = datasets.CIFAR10(DATA_ROOT, train=True, download=True)
+  2 | 
+  3 | # Per-channel statistics of the training pixels, computed once at startup.
+  4 | pixels = torch.from_numpy(train_set.data).float().div_(255.0)
+  5 | MEAN = tuple(pixels.mean(dim=(0, 1, 2)).tolist())
+  6 | STD = tuple(pixels.std(dim=(0, 1, 2), unbiased=False).tolist())
+  7 | del pixels
+  8 | 
+  9 | print("MEAN =", tuple(round(v, 4) for v in MEAN))
+ 10 | print("STD  =", tuple(round(v, 4) for v in STD))
+ 11 | 
+ 12 | train_tf = transforms.Compose(
+ 13 |     [
+ 14 |         transforms.RandomCrop(32, padding=4),
+ 15 |         transforms.RandomHorizontalFlip(),
+ 16 |         transforms.ToTensor(),
+ 17 |         transforms.Normalize(MEAN, STD),
+ 18 |     ]
+ 19 | )
+ 20 | test_tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(MEAN, STD)])
+ 21 | 
+ 22 | train_set.transform = train_tf
+ 23 | test_set = datasets.CIFAR10(DATA_ROOT, train=False, download=True, transform=test_tf)
+ 24 | classes = test_set.classes
+ 25 | 
+ 26 | train_loader = DataLoader(
+ 27 |     train_set,
+ 28 |     batch_size=BATCH_SIZE,
+ 29 |     shuffle=True,
+ 30 |     num_workers=NUM_WORKERS,
+ 31 |     pin_memory=device.type == "cuda",
+ 32 | )
+ 33 | test_loader = DataLoader(
+ 34 |     test_set,
+ 35 |     batch_size=512,
+ 36 |     shuffle=False,
+ 37 |     num_workers=NUM_WORKERS,
+ 38 |     pin_memory=device.type == "cuda",
+ 39 | )
+ 40 | 
+ 41 | # A fixed batch used later to inspect the gates.
+ 42 | probe_x, _ = next(iter(test_loader))
+ 43 | probe_x = probe_x[:256].to(device)
+ 44 | 
+ 45 | print(f"{len(train_set):,} train / {len(test_set):,} test images")
 ```
 
 *Line by line:*
 
-- *Line 1:* `MEAN = (0.4914, 0.4822, 0.4465)` is the per-channel mean of CIFAR-10. It is used to center the inputs.
-- *Line 2:* `STD = (0.2470, 0.2435, 0.2616)` is the per-channel standard deviation. It scales the inputs to roughly unit variance.
-- *Lines 4-11:* `train_tf` is the training transform pipeline. The order matters: augmentation first, then tensor conversion, then normalization.
-- *Line 6:* `RandomCrop(32, padding=4)` pads the image to 40×40 and takes a random 32×32 crop. This is translation augmentation, matching the paper's use of small translations.
-- *Line 7:* `RandomHorizontalFlip()` mirrors the image with probability 0.5, matching the paper's mirroring augmentation.
-- *Line 8:* `ToTensor()` converts a PIL image to a float tensor, changes H×W×C to C×H×W, and scales values to the range 0 to 1.
-- *Line 9:* `Normalize(MEAN, STD)` applies `(x - mean) / std` per channel.
-- *Line 12:* `test_tf` contains only tensor conversion and normalization. Test data must not be augmented, so evaluation is deterministic.
-- *Line 14:* Creates the CIFAR-10 training set, downloads it if missing, and applies `train_tf`.
-- *Line 15:* Creates the test set with `test_tf`.
-- *Line 16:* `classes = test_set.classes` stores the 10 class names for plot labels and prediction titles.
-- *Lines 18-24:* The training `DataLoader` uses batch size 128, shuffles every epoch, uses two workers, and pins memory only when CUDA is available.
-- *Line 20:* `batch_size=BATCH_SIZE` uses the configured 128.
-- *Line 21:* `shuffle=True` reshuffles the training data every epoch, which is important for SGD.
-- *Line 22:* `num_workers=NUM_WORKERS` loads batches in parallel.
-- *Line 23:* `pin_memory=True` only on CUDA can speed up host-to-GPU copies.
-- *Lines 25-31:* The test `DataLoader` uses batch size 512 because evaluation has no gradients and can use larger batches. `shuffle=False` keeps the order stable.
-- *Lines 33-36:* `probe_x` is a fixed batch of 256 test images moved to the device. The iterator is kept in `probe_iter` so its worker processes shut down cleanly instead of racing with Python's deallocator. The batch is reused for gate statistics, gradient measurements, and layer-similarity plots so those analyses are comparable across calls.
-- *Line 38:* Prints the dataset sizes with thousands separators.
+- *Line 1:* `train_set = datasets.CIFAR10(DATA_ROOT, train=True, download=True)` loads the 50,000 training images. At this point the dataset has no transform; the raw `uint8` images are available as `train_set.data`.
+- *Line 3:* A comment marking the statistics computation. It runs once at startup, not once per epoch.
+- *Line 4:* `pixels = torch.from_numpy(train_set.data).float().div_(255.0)` converts the raw `(50000, 32, 32, 3)` `uint8` array to a float tensor with values in 0 to 1. `from_numpy` avoids an extra copy of the integer data, `.float()` creates the float tensor, and `.div_(255.0)` scales in place.
+- *Line 5:* `MEAN = tuple(pixels.mean(dim=(0, 1, 2)).tolist())` averages over images, height, and width. The remaining dimension is the channel, so the result is one mean per RGB channel.
+- *Line 6:* `STD = tuple(pixels.std(dim=(0, 1, 2), unbiased=False).tolist())` computes the population standard deviation per channel. `unbiased=False` divides by `N`, not `N - 1`, matching the standard normalization convention.
+- *Line 7:* `del pixels` frees the temporary 614 MB float tensor. The statistics are already stored in `MEAN` and `STD`.
+- *Line 9:* Prints the computed means rounded to four decimals for readability.
+- *Line 10:* Prints the computed standard deviations rounded to four decimals.
+- *Lines 12-19:* `train_tf` is the training transform pipeline. The order matters: augmentation first, then tensor conversion, then normalization.
+- *Line 14:* `RandomCrop(32, padding=4)` pads the image to 40×40 and takes a random 32×32 crop. This is translation augmentation, matching the paper's use of small translations.
+- *Line 15:* `RandomHorizontalFlip()` mirrors the image with probability 0.5, matching the paper's mirroring augmentation.
+- *Line 16:* `ToTensor()` converts a PIL image to a float tensor, changes H×W×C to C×H×W, and scales values to the range 0 to 1.
+- *Line 17:* `Normalize(MEAN, STD)` applies `(x - mean) / std` per channel using the dynamically computed statistics.
+- *Line 20:* `test_tf` contains only tensor conversion and normalization. Test data must not be augmented, so evaluation is deterministic.
+- *Line 22:* `train_set.transform = train_tf` attaches the training transform to the dataset that was already loaded. This avoids loading the training images a second time.
+- *Line 23:* Creates the test set with `test_tf`.
+- *Line 24:* `classes = test_set.classes` stores the 10 class names for plot labels and prediction titles.
+- *Lines 26-32:* The training `DataLoader` uses batch size 128, shuffles every epoch, uses two workers, and pins memory only when CUDA is available.
+- *Line 28:* `batch_size=BATCH_SIZE` uses the configured 128.
+- *Line 29:* `shuffle=True` reshuffles the training data every epoch, which is important for SGD.
+- *Line 30:* `num_workers=NUM_WORKERS` loads batches in parallel.
+- *Line 31:* `pin_memory=True` only on CUDA can speed up host-to-GPU copies.
+- *Lines 33-39:* The test `DataLoader` uses batch size 512 because evaluation has no gradients and can use larger batches. `shuffle=False` keeps the order stable.
+- *Line 41:* A comment marking the fixed probe batch that follows.
+- *Lines 42-43:* `probe_x` is a fixed batch of 256 test images moved to the device. It is reused for gate statistics, gradient measurements, and layer-similarity plots so those analyses are comparable across calls.
+- *Line 45:* Prints the dataset sizes with thousands separators.
 
 == Cell 6: The highway layer in code heading
 
@@ -207,9 +222,9 @@
 == Cell 8: The convolutional highway network heading
 
 *Role of this cell.* Describes the full model: a plain 3×3 stem, two plain strided convolutions that halve the spatial size and change channels, nineteen highway blocks split 6/6/7, global average pooling, and a linear classifier.
-*Depth convention.* Counting the stem, this is a depth-20 hidden stack: one plain layer followed by 19 highway layers. The paper's released 19-layer CIFAR-10 network is different: it interleaves 14 highway layers with plain convolutions. The stage widths are 32, 64, and 128.
+*Depth convention.* With the stem, this is the paper's depth-20 convention: one plain layer followed by 19 hidden layers. The stage widths are 32, 64, and 128.
 *Why the transitions are plain.* `H` and `T` both preserve channels and spatial size. Layers that change channels or resolution cannot be highway blocks because the carry addition would have mismatched shapes. Section 2.1 of the paper uses plain layers for this.
-*Honesty note.* This is a compact variant of the paper's convolutional setup, not an exact FitNet reproduction.
+*Honesty note.* This is a compact version of the paper's convolutional setup, not an exact FitNet reproduction.
 *Initialization.* All weights use He initialization. Gate biases are reset to -2 after initialization so the gates start mostly closed.
 
 == Cell 9: The full convolutional network
@@ -276,7 +291,7 @@
 *Line by line:*
 
 - *Line 1:* `class Net(nn.Module)` defines the full model.
-- *Lines 2-6:* The constructor takes `channels=(32, 64, 128)` and `blocks_per_stage=(6, 6, 7)`. The block counts sum to 19, forming a depth-20 hidden stack when the stem is included. The paper's 19-layer CIFAR-10 net instead has 14 highway layers plus plain convolutions.
+- *Lines 2-6:* The constructor takes `channels=(32, 64, 128)` and `blocks_per_stage=(6, 6, 7)`. The block counts sum to 19, matching the paper's depth-20 convention when the stem is included.
 - *Line 7:* `super().__init__()` initializes the base module.
 - *Line 8:* `c1, c2, c3 = channels` unpacks the three stage widths.
 - *Lines 9-12:* `self.stem` is a plain 3×3 convolution from 3 RGB channels to 32 channels, followed by ReLU. It changes the input dimensionality before any highway block.

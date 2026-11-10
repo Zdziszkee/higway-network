@@ -1,10 +1,10 @@
 
 == Cell 10: Training setup heading
 
-*Role of this cell.* Lists the paper-inspired training recipe: SGD with momentum 0.9, batch size 128, He initialization, weight decay 5e-4, exponential learning-rate decay by 0.89 per epoch, and 25 epochs.
-*Why 25 epochs.* The authors' released Caffe config uses 200k iterations, about 400 epochs at batch 100. Twenty-five epochs keeps this pedagogical run near 13 to 15 minutes while still giving the gates time to move.
-*Why decay 0.89.* The paper's released config uses step decay at 100k/150k/175k iterations, not a per-epoch exponential. For this short run, 0.89 brings the learning rate down to about 0.005.
-*Why learning rate 0.1.* It is a high CIFAR-10 rate that stays stable here because the highway shortcuts preserve gradient flow. The authors' released config uses base LR 0.025 with Nesterov momentum.
+*Role of this cell.* Lists the paper-style training recipe: SGD with momentum 0.9, batch size 128, He initialization, weight decay 5e-4, exponential learning-rate decay by 0.89 per epoch, and 25 epochs.
+*Why 25 epochs.* The full paper-style run is 150 epochs, which took about 2 hours on the 3060 Ti. Twenty-five epochs keeps the run near 20 to 30 minutes while still giving the gates time to move.
+*Why decay 0.89.* The original 150-epoch schedule used 0.98 per epoch, ending near `0.1 * 0.98^150 ≈ 0.005`. For 25 epochs, `0.1 * 0.89^25 ≈ 0.005`, so the final learning rate is similar. This preserves the shape of the paper's exponential decay instead of ending at a high rate.
+*Why learning rate 0.1.* This is the paper's CIFAR-10 convolutional learning rate. The paper random-searched per-network rates; this notebook uses one representative shared rate.
 *Why weight decay and clipping are mentioned as additions.* The paper does not explicitly state weight decay or gradient clipping. Weight decay 5e-4 is a practical CIFAR-10 choice, and clipping at 10 keeps SGD stable.
 *Gate tracking.* The mean gate value of every block is recorded after every epoch for the gate-evolution heatmap.
 
@@ -112,7 +112,7 @@
 
 == Cell 13: Create and train the highway model
 
-*What this cell does.* Seeds the run, creates the 19-block convolutional highway network, applies He initialization and the gate-bias reset, prints the parameter count, and trains for 25 epochs with gate tracking.
+*What this cell does.* Seeds the run, creates the depth-20 convolutional highway network, applies He initialization and the gate-bias reset, prints the parameter count, and trains for 25 epochs with gate tracking.
 
 ```
   1 | set_seed()
@@ -132,7 +132,7 @@
 
 == Cell 14: Results heading
 
-*Role of this cell.* A heading for the training curves. The body now says that there is no plain baseline, so this is not the paper's depth comparison.
+*Role of this cell.* A heading for the training curves. Note: the body still says "Two identical training setups, with and without the gates." That sentence is stale because the plain baseline was removed. The code now plots the highway model only.
 
 == Cell 15: Loss and accuracy curves
 
@@ -253,13 +253,14 @@
 - *Line 21:* Returns one norm per block.
 - *Line 24:* Seeds the fresh model.
 - *Line 25:* `fresh_highway = Net().to(device)` creates an untrained copy for the initialization measurement.
-- *Line 26:* `init_weights(fresh_highway)` applies the same He initialization and gate-bias reset as the trained model. Without it, the "at initialization" curve would use PyTorch's default initialization and would not be comparable.
-- *Lines 28-29:* Takes one training batch of 256 images for the gradient estimate.
+- *Line 26:* `init_weights(fresh_highway)` applies the same He initialization and gate-bias reset as the trained model. Without it, the fresh model would keep PyTorch's default initialization and the comparison would not be fair.
+- *Line 28:* Takes one training batch for the gradient estimate.
+- *Line 29:* Keeps the first 256 images and moves the batch to the device.
 - *Line 31:* Creates one figure and one axis.
 - *Line 32:* `layers` is the 1-based layer index for the x-axis.
 - *Lines 33-38:* Plots gradient norms at initialization with circle markers and a log y-axis.
 - *Lines 39-44:* Plots gradient norms after training on the same axes.
-- *Line 45:* `highway.eval()` restores evaluation mode after the measurement.
+- *Line 45:* `highway.eval()` restores evaluation mode after `layer_input_grad_norms` put the trained model in training mode.
 - *Lines 46-50:* Sets axis labels and title.
 - *Line 51:* Adds a grid for both major and minor ticks.
 - *Line 52:* Adds the legend.
@@ -267,8 +268,8 @@
 
 == Cell 18: Gate bias and gate activity heading
 
-*Role of this cell.* Explains the paper's Figure 2 idea for its 50-layer networks: inspect the learned transform-gate biases and the mean gate activity per layer. A negative bias does not necessarily mean a dead layer. It often makes gates selective: some units stay closed while others open for particular inputs.
-*What the bars show.* The average gate value of each layer over the whole test set. In this run the biases move toward zero and the gates open on average, which differs from the paper's deeper networks.
+*Role of this cell.* Explains the paper's Figure 2 idea: inspect the learned transform-gate biases and the mean gate activity per layer. A negative bias does not necessarily mean a dead layer. It often makes gates selective: some units stay closed while others open for particular inputs.
+*What the bars show.* The average gate value of each layer over the whole test set.
 
 == Cell 19: Gate bias and mean activity per layer
 

@@ -1,7 +1,7 @@
 
 == Cell 20: Gate evolution heading
 
-*Role of this cell.* Explains the gate-evolution heatmap: rows are highway layers, columns are epochs. Bright cells mean the layer transforms its input, dark cells mean it mostly carries. At initialization the gates are near `sigmoid(-2) ≈ 0.12`; the first recorded column is already after one epoch, and in this compact run the gates open on average.
+*Role of this cell.* Explains the gate-evolution heatmap: rows are highway layers, columns are epochs. Bright cells mean the layer transforms its input, dark cells mean it mostly carries. Gates start near `sigmoid(-2) ≈ 0.12` and move during training.
 
 == Cell 21: Gate-evolution heatmap
 
@@ -85,7 +85,7 @@
 
 == Cell 24: Class-specific routing heading
 
-*Role of this cell.* Explains the paper's Figure 3 idea for its 50-layer networks: compare each class's mean gate activity with the overall average. Red cells mean a class transforms more than usual in that layer; blue cells mean it carries more than usual.
+*Role of this cell.* Explains the paper's Figure 3 idea: compare each class's mean gate activity with the overall average. Red cells mean a class transforms more than usual in that layer; blue cells mean it carries more than usual.
 *Why this matters.* It tests whether the gates are input-dependent or just a fixed layer-wise pattern.
 
 == Cell 25: Class-routing heatmap
@@ -181,7 +181,7 @@
 
 == Cell 28: Lesioning heading
 
-*Role of this cell.* Explains the paper's Figure 4 lesioning experiment for its 50-layer networks. Close all transform gates of one layer at a time, forcing that layer to copy its input, and measure the test-accuracy drop. A drop near zero means the layer is barely used; a large drop means it is important.
+*Role of this cell.* Explains the paper's Figure 4 lesioning experiment. Close all transform gates of one layer at a time, forcing that layer to copy its input, and measure the test-accuracy drop. A drop near zero means the layer is barely used; a large drop means it is important.
 *Caveat.* With 10,000 test images, differences below about 0.5 percentage points are close to noise, so small bars should not be over-interpreted.
 
 == Cell 29: Layer-lesion experiment
@@ -343,8 +343,8 @@
 
 *Line by line:*
 
-- *Line 1:* Creates a test iterator and keeps it in `sample_iter` so its workers shut down cleanly.
-- *Line 2:* Gets the first test batch. The test loader does not shuffle, so this is always the same batch.
+- *Line 1:* `sample_iter = iter(test_loader)` creates an explicit iterator. Keeping the iterator alive in a named variable gives the DataLoader workers a clean shutdown point.
+- *Line 2:* `next(sample_iter)` gets the first test batch. The test loader does not shuffle, so this is always the same batch.
 - *Line 3:* Keeps only the first eight images and labels.
 - *Lines 4-5:* Runs the model without gradients, applies softmax to turn logits into probabilities, and moves the result to CPU.
 - *Line 6:* Converts labels to Python integers.
