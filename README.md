@@ -8,11 +8,12 @@ trained on CIFAR-10. The whole project is one notebook:
 ## What's inside
 
 - the paper's highway layer: `y = H(x) * T(x) + x * (1 - T(x))`
-- a convolutional CIFAR-10 model in a depth-20 layout: plain stem plus 19 highway blocks
-  (a compact variant of the paper's 19-layer FitNet-based network)
-- about 2.7M parameters
+- the paper's 19-layer convolutional CIFAR-10 architecture: 14 highway layers, 4 plain
+  convolutions, dropout 0.2, and a 1x1 100-channel classifier head
+- about 2.26M parameters
 - negative transform-gate bias initialization, also from the paper
-- paper-inspired training: SGD with momentum, He initialization, exponential learning-rate decay
+- paper-inspired training: SGD with momentum, He initialization, exponential learning-rate decay,
+  30 epochs with decay 0.86
 - CIFAR-10 training and evaluation, loss/accuracy curves
 - gradient flow at initialization and after training
 - gate analysis: bias and activity per layer, evolution during training, selectivity for one image
@@ -27,7 +28,7 @@ uv run jupyter lab       # open the notebook
 ```
 
 Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
-recommended but not required. The depth-20 convolutional run fits in 8 GB and takes roughly 13 to
+recommended but not required. The 19-layer convolutional run fits in 8 GB and takes roughly 10 to
 15 minutes for the highway model on an RTX 3060 Ti. CIFAR-10 is downloaded to `data/` on the first
 run (git-ignored).
 
