@@ -8,12 +8,12 @@ trained on CIFAR-10. The whole project is one notebook:
 ## What's inside
 
 - the paper's highway layer: `y = H(x) * T(x) + x * (1 - T(x))`
-- a compact convolutional CIFAR-10 model: plain conv stem and downsampling, 8 highway blocks
-- about 1.24M parameters, with a parameter-matched plain conv baseline
+- a convolutional CIFAR-10 model at the paper's depth-20 convention: plain stem plus 19 highway blocks
+- about 2.7M parameters
 - negative transform-gate bias initialization, also from the paper
 - paper-style training: SGD with momentum, He initialization, exponential learning-rate decay
 - CIFAR-10 training and evaluation, loss/accuracy curves
-- gradient-flow comparison between plain and highway stacks
+- gradient flow at initialization and after training
 - gate analysis: bias and activity per layer, evolution during training, selectivity for one image
 - class-specific routing and layer-lesioning plots from the paper's analysis
 - an information-flow plot and a t-SNE view of the learned features
@@ -26,8 +26,9 @@ uv run jupyter lab       # open the notebook
 ```
 
 Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
-recommended but not required. The compact convolutional run fits in 8 GB and takes roughly 30 to
-60 minutes on a modern GPU. CIFAR-10 is downloaded to `data/` on the first run (git-ignored).
+recommended but not required. The depth-20 convolutional run fits in 8 GB and takes roughly 2 to
+2.5 hours for the highway model on a modern GPU. CIFAR-10 is downloaded to `data/` on the first run
+(git-ignored).
 
 If you recreate the virtual environment, re-register the project-local kernel:
 
