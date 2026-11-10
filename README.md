@@ -7,11 +7,13 @@ trained on CIFAR-10. The whole project is one notebook:
 
 ## What's inside
 
-- a from-scratch `Highway` layer: `y = H(x) * T(x) + x * (1 - T(x))`
-- a plain `Linear -> ReLU` network as the baseline, identical except for the blocks
+- the paper's highway layer: `y = H(x) * T(x) + x * (1 - T(x))`
+- a plain layer to change dimensionality followed by highway blocks, as in the paper
+- negative transform-gate bias initialization, also from the paper
+- a parameter-matched plain network as the baseline
 - CIFAR-10 training and evaluation, loss/accuracy curves
-- an inspection of the learned transform gates (how much each layer transforms vs. carries)
-- notes on negative gate-bias initialization and suggestions for further experiments
+- gate analysis: how gates evolve during training and how selective they are for one image
+- an information-flow plot showing how much each layer changes its input
 
 ## Run locally
 
