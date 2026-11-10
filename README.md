@@ -12,8 +12,10 @@ trained on CIFAR-10. The whole project is one notebook:
 - negative transform-gate bias initialization, also from the paper
 - a parameter-matched plain network as the baseline
 - CIFAR-10 training and evaluation, loss/accuracy curves
-- gate analysis: how gates evolve during training and how selective they are for one image
-- an information-flow plot showing how much each layer changes its input
+- gradient-flow comparison between plain and highway stacks
+- gate analysis: bias and activity per layer, evolution during training, selectivity for one image
+- class-specific routing and layer-lesioning plots from the paper's analysis
+- an information-flow plot and a t-SNE view of the learned features
 
 ## Run locally
 
