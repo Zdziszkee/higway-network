@@ -19,7 +19,6 @@ trained on CIFAR-10. The whole project is one notebook:
 - gate analysis: bias and activity per layer, evolution during training, selectivity for one image
 - class-specific routing and layer-lesioning plots from the paper's analysis
 - an information-flow plot and a t-SNE view of the learned features
-- paper Figure 1-style highway depth comparison on MNIST (plain baseline omitted)
 - paper Figure 2-style per-channel gate maps and block-output heatmaps
 
 ## Run locally
@@ -31,8 +30,8 @@ uv run jupyter lab       # open the notebook
 
 Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
 recommended but not required. The 19-layer convolutional run fits in 8 GB and takes roughly 45
-minutes for the highway model on an RTX 3060 Ti. The MNIST depth comparison adds about 10 minutes.
-CIFAR-10 and MNIST are downloaded to `data/` on the first run (git-ignored).
+minutes for the highway model on an RTX 3060 Ti. CIFAR-10 is downloaded to `data/` on the first run
+(git-ignored).
 
 If you recreate the virtual environment, re-register the project-local kernel:
 
