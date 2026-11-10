@@ -14,33 +14,38 @@ tests/            pytest tests
 
 ```bash
 uv sync                      # create .venv and install everything (incl. dev tools)
+make kernel                  # register the Jupyter kernel (already done in this checkout)
 ```
 
-Jupyter is already registered as the **Python 3.15 (highway)** kernel. Re-register it
-after recreating `.venv`:
+The venv is registered as the **Python 3.15 (highway)** kernel, project-locally inside
+`.venv/share/jupyter/kernels/highway` (no global Jupyter state). Re-register it if you
+recreate the venv:
 
 ```bash
-uv run python -m ipykernel install --user --name highway --display-name "Python 3.15 (highway)"
+uv run python -m ipykernel install --sys-prefix --name highway --display-name "Python 3.15 (highway)"
 ```
 
 ## Commands
 
-| Task              | Command                                     |
-| ----------------- | ------------------------------------------- |
-| Notebook UI       | `uv run jupyter notebook`                   |
-| JupyterLab UI     | `uv run jupyter lab`                        |
-| Lint (incl. ipynb)| `uv run ruff check .`                       |
-| Auto-fix lint     | `uv run ruff check --fix .`                 |
-| Format            | `uv run ruff format .`                      |
-| Type check        | `uv run ty check`                           |
-| Tests             | `uv run pytest`                             |
-| Run the script    | `uv run highway`                            |
-| Add a dependency  | `uv add <pkg>` / `uv add --dev <pkg>`       |
+Run `make` to list targets.
+
+| Task               | make      | raw command                            |
+| ------------------ | --------- | -------------------------------------- |
+| Notebook UI        | `make notebook` | `uv run jupyter notebook notebooks` |
+| JupyterLab UI      | `make lab`      | `uv run jupyter lab notebooks`      |
+| Lint (incl. ipynb) | `make lint`     | `uv run ruff check .`               |
+| Fix + format       | `make fmt`      | `uv run ruff check --fix . && uv run ruff format .` |
+| Type check         | `make typecheck`| `uv run ty check`                   |
+| Tests              | `make test`     | `uv run pytest`                     |
+| Everything         | `make check`    | lint + typecheck + tests            |
+| Run the script     | -               | `uv run highway`                    |
+| Add a dependency   | -               | `uv add <pkg>` / `uv add --dev <pkg>` |
 
 ## Config
 
 Tool settings live in `pyproject.toml`:
 
-- `[tool.ruff]` - line length 100, rules `E,W,F,I,B,C4,SIM,PTH,RET,UP,RUF`
+- `[tool.ruff]` - line length 100, rules `E,W,F,I,B,C4,SIM,PTH,RET,UP,RUF`; both lint and
+  format apply to `.ipynb` cells as well as `.py` files
 - `[tool.ty]` - checks `src/` and `tests/`, ignores notebooks
 - `[tool.pytest.ini_options]` - tests live in `tests/`
