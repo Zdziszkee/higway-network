@@ -11,6 +11,7 @@ trained on CIFAR-10. The whole project is one notebook:
 - a plain layer to change dimensionality followed by highway blocks, as in the paper
 - negative transform-gate bias initialization, also from the paper
 - a parameter-matched plain network as the baseline
+- paper-style training: SGD with momentum, He initialization, exponential learning-rate decay
 - CIFAR-10 training and evaluation, loss/accuracy curves
 - gradient-flow comparison between plain and highway stacks
 - gate analysis: bias and activity per layer, evolution during training, selectivity for one image
@@ -25,8 +26,8 @@ uv run jupyter lab       # open the notebook
 ```
 
 Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
-recommended but not required; training takes about a minute on a modern GPU. CIFAR-10 is
-downloaded to `data/` on the first run (git-ignored).
+recommended but not required; the paper-style run takes roughly 10 to 20 minutes on a modern
+GPU. CIFAR-10 is downloaded to `data/` on the first run (git-ignored).
 
 If you recreate the virtual environment, re-register the project-local kernel:
 
