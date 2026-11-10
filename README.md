@@ -9,10 +9,10 @@ trained on CIFAR-10. The whole project is one notebook:
 
 - the paper's highway layer: `y = H(x) * T(x) + x * (1 - T(x))`
 - the paper's 19-layer convolutional CIFAR-10 architecture: 14 highway layers, 4 plain
-  convolutions, dropout, and a 1x1 100-channel classifier head
+  convolutions, and a 1x1 100-channel classifier head
 - about 2.26M parameters
 - negative transform-gate bias initialization, also from the paper
-- paper-inspired training: Nesterov SGD, batch 100, weight decay 1e-3, dropout 0.2,
+- paper-inspired training: SGD with momentum 0.9, batch 100, weight decay 1e-3,
   exponential learning-rate decay, 100 epochs with decay 0.95
 - CIFAR-10 training and evaluation, loss/accuracy curves
 - gradient flow at initialization and after training
