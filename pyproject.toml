@@ -1,0 +1,78 @@
+[project]
+name = "highway"
+version = "0.1.0"
+description = "DeepL course project"
+readme = "README.md"
+authors = [
+    { name = "Zdziszkee", email = "zdziszkee@gmail.com" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "ipykernel>=7.4.0",
+    "notebook>=7.6.5",
+]
+
+[project.scripts]
+highway = "highway:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+    "ty>=0.0.100",
+]
+
+
+# ---------------------------------------------------------------- ruff ----
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "notebooks"]
+extend-exclude = ["build", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "PTH", # flake8-use-pathlib
+    "RET", # flake8-return
+    "UP",  # pyupgrade
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501", # line length is handled by the formatter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["highway"]
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "double"
+
+
+# ------------------------------------------------------------------ ty ----
+[tool.ty.src]
+include = ["src", "tests"]
+exclude = ["build", "dist", ".venv", "notebooks"]
+
+[tool.ty.environment]
+python-version = "3.15"
+
+[tool.ty.terminal]
+output-format = "full"
+
+
+# -------------------------------------------------------------- pytest ----
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+addopts = "-ra -q --strict-markers"
