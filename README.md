@@ -26,8 +26,8 @@ uv run jupyter lab       # open the notebook
 ```
 
 Open `highway_cifar10.ipynb` and select the **Python 3.15 (highway)** kernel. A GPU is
-recommended but not required. The depth-20 convolutional run fits in 8 GB and takes roughly 2 to
-2.5 hours for the highway model on a modern GPU. CIFAR-10 is downloaded to `data/` on the first run
+recommended but not required. The depth-20 convolutional run fits in 8 GB and takes roughly 45 to
+60 minutes for the highway model on a modern GPU. CIFAR-10 is downloaded to `data/` on the first run
 (git-ignored).
 
 If you recreate the virtual environment, re-register the project-local kernel:
